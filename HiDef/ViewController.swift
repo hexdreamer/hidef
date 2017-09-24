@@ -10,9 +10,16 @@ import UIKit
 
 class ViewController: UIViewController {
 
+    var audioPlayer :PDAudioPlayer?;
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
+    
+        guard let audioFileURL = Bundle.main.url(forResource:"Vocalise", withExtension:"m4a"),
+            let audioSource = PDFileAudioSource(url:audioFileURL) else {
+            return
+        }
+        self.audioPlayer = PDAudioPlayer(source:audioSource)
     }
 
     override func didReceiveMemoryWarning() {

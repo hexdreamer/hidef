@@ -10,12 +10,12 @@ import UIKit
 
 class ViewController: UIViewController {
 
-    var audioPlayer :PDAudioPlayer?;
+    var audioPlayer :PDAudioPlayer?
     
     override func viewDidLoad() {
         super.viewDidLoad()
     
-        guard let audioFileURL = Bundle.main.url(forResource:"Vocalise", withExtension:"m4a"),
+        guard let audioFileURL = Bundle.main.url(forResource:"AnvilOfCrom", withExtension:"aif"),
             let audioSource = PDFileAudioSource(url:audioFileURL) else {
             return
         }
@@ -27,6 +27,19 @@ class ViewController: UIViewController {
         // Dispose of any resources that can be recreated.
     }
 
+    @IBAction func play(sender:UIButton) {
+        guard let audioPlayer = self.audioPlayer else {
+            return
+        }
+        audioPlayer.play()
+    }
+    
+    @IBAction func pause(sender:UIButton) {
+        guard let audioPlayer = self.audioPlayer else {
+            return
+        }
+        audioPlayer.pause()
+    }
 
 }
 

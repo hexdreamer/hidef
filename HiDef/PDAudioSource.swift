@@ -10,10 +10,14 @@ import AudioToolbox
 
 class PDAudioSource {
 
-    let mDataFormat:AudioStreamBasicDescription                     // 2
+    let mDataFormat:AudioStreamBasicDescription
+    var mCurrentPacket :Int64 = 0
 
-    init?() {
-        return nil
+    let mPacketDescs :UnsafeMutablePointer<AudioStreamPacketDescription>?  // 9
+
+    init(dataFormat:AudioStreamBasicDescription) {
+        self.mDataFormat = dataFormat
+        self.mPacketDescs = nil
     }
     
     func fillBuffer(_ buffer:PDAudioBuffer) {}

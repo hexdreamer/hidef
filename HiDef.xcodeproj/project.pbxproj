@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B946C1481F8C362900FB8D8B /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = B946C1471F8C362900FB8D8B /* main.swift */; };
 		B96FE2971F7738A6006BE6FE /* Vocalise.m4a in Resources */ = {isa = PBXBuildFile; fileRef = B96FE2961F7738A6006BE6FE /* Vocalise.m4a */; };
 		B983DAEB1F75FEC60046A314 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B983DAEA1F75FEC60046A314 /* AppDelegate.swift */; };
 		B983DAED1F75FEC60046A314 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B983DAEC1F75FEC60046A314 /* ViewController.swift */; };
@@ -39,7 +40,21 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		B946C1431F8C362900FB8D8B /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		B946C1451F8C362900FB8D8B /* audioplayer */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = audioplayer; sourceTree = BUILT_PRODUCTS_DIR; };
+		B946C1471F8C362900FB8D8B /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		B9537F951F7DAFC300EB284E /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		B96FE2961F7738A6006BE6FE /* Vocalise.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = Vocalise.m4a; sourceTree = "<group>"; };
 		B983DAE71F75FEC60046A314 /* HiDef.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HiDef.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -63,6 +78,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		B946C1421F8C362900FB8D8B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B983DAE41F75FEC60046A314 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -87,6 +109,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		B946C1461F8C362900FB8D8B /* audioplayer */ = {
+			isa = PBXGroup;
+			children = (
+				B946C1471F8C362900FB8D8B /* main.swift */,
+			);
+			path = audioplayer;
+			sourceTree = "<group>";
+		};
 		B983DADE1F75FEC60046A314 = {
 			isa = PBXGroup;
 			children = (
@@ -100,6 +130,7 @@
 				B983DAE91F75FEC60046A314 /* HiDef */,
 				B983DAFE1F75FEC60046A314 /* HiDefTests */,
 				B983DB091F75FEC60046A314 /* HiDefUITests */,
+				B946C1461F8C362900FB8D8B /* audioplayer */,
 				B983DAE81F75FEC60046A314 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -110,6 +141,7 @@
 				B983DAE71F75FEC60046A314 /* HiDef.app */,
 				B983DAFB1F75FEC60046A314 /* HiDefTests.xctest */,
 				B983DB061F75FEC60046A314 /* HiDefUITests.xctest */,
+				B946C1451F8C362900FB8D8B /* audioplayer */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -148,6 +180,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		B946C1441F8C362900FB8D8B /* audioplayer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B946C14B1F8C362900FB8D8B /* Build configuration list for PBXNativeTarget "audioplayer" */;
+			buildPhases = (
+				B946C1411F8C362900FB8D8B /* Sources */,
+				B946C1421F8C362900FB8D8B /* Frameworks */,
+				B946C1431F8C362900FB8D8B /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = audioplayer;
+			productName = audioplayer;
+			productReference = B946C1451F8C362900FB8D8B /* audioplayer */;
+			productType = "com.apple.product-type.tool";
+		};
 		B983DAE61F75FEC60046A314 /* HiDef */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = B983DB0F1F75FEC60046A314 /* Build configuration list for PBXNativeTarget "HiDef" */;
@@ -207,10 +256,14 @@
 		B983DADF1F75FEC60046A314 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastSwiftUpdateCheck = 0900;
+				LastSwiftUpdateCheck = 0910;
 				LastUpgradeCheck = 0900;
 				ORGANIZATIONNAME = "PepperDog Enterprises";
 				TargetAttributes = {
+					B946C1441F8C362900FB8D8B = {
+						CreatedOnToolsVersion = 9.1;
+						ProvisioningStyle = Automatic;
+					};
 					B983DAE61F75FEC60046A314 = {
 						CreatedOnToolsVersion = 9.0;
 						ProvisioningStyle = Automatic;
@@ -243,6 +296,7 @@
 				B983DAE61F75FEC60046A314 /* HiDef */,
 				B983DAFA1F75FEC60046A314 /* HiDefTests */,
 				B983DB051F75FEC60046A314 /* HiDefUITests */,
+				B946C1441F8C362900FB8D8B /* audioplayer */,
 			);
 		};
 /* End PBXProject section */
@@ -277,6 +331,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		B946C1411F8C362900FB8D8B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B946C1481F8C362900FB8D8B /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B983DAE31F75FEC60046A314 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -341,6 +403,32 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		B946C1491F8C362900FB8D8B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = S4K89S6LAE;
+				MACOSX_DEPLOYMENT_TARGET = 10.12;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 4.0;
+			};
+			name = Debug;
+		};
+		B946C14A1F8C362900FB8D8B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = S4K89S6LAE;
+				MACOSX_DEPLOYMENT_TARGET = 10.12;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 4.0;
+			};
+			name = Release;
+		};
 		B983DB0D1F75FEC60046A314 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -547,6 +635,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		B946C14B1F8C362900FB8D8B /* Build configuration list for PBXNativeTarget "audioplayer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B946C1491F8C362900FB8D8B /* Debug */,
+				B946C14A1F8C362900FB8D8B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		B983DAE21F75FEC60046A314 /* Build configuration list for PBXProject "HiDef" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

@@ -85,13 +85,10 @@ class AQTestInfo {
 //    }
 }
 
-func AQTestBufferCallback(_ inUserData:UnsafeMutableRawPointer?,
+func AQTestBufferCallback(_ info:AQTestInfo,
                           _ inAQ:AudioQueueRef,
                           _ inCompleteAQBuffer:AudioQueueBufferRef)
 {
-    let info = inUserData!.load(as:AQTestInfo.self)
-    if info.mDone { return };
-    
     var numBytes :UInt32 = 0
     var nPackets :UInt32 = info.mNumPacketsToRead
     
@@ -338,10 +335,16 @@ func main(_ argc:Int, _ argv:[String]) -> Int
         print("Playing format: ")
         //myInfo.mDataFormat.Print();
     }
+    
     var audioQueue:AudioQueueRef?
-    XThrowIfError(AudioQueueNewOutput(&myInfo.mDataFormat!, AQTestBufferCallback, &myInfo,
-                                      CFRunLoopGetCurrent(), RunLoopMode.commonModes as CFString, 0, &audioQueue), "AudioQueueNew failed")
+    AudioQueueNewOutputWithDispatchQueue(&audioQueue, &myInfo.mDataFormat!, 0, DispatchQueue.global()) {(
+        baq:AudioQueueRef,
+        bbuffer:AudioQueueBufferRef
+        ) in
+        AQTestBufferCallback(myInfo, baq, bbuffer)
+    }
     myInfo.mQueue = audioQueue
+    
     var bufferByteSize:UInt32
     // we need to calculate how many packets we read at a time, and how big a buffer we need
     // we base this on the size of the packets in the file and an approximate duration for each buffer
@@ -391,7 +394,7 @@ func main(_ argc:Int, _ argv:[String]) -> Int
         var buffer:AudioQueueBufferRef?
         XThrowIfError(AudioQueueAllocateBuffer(myInfo.mQueue!, bufferByteSize, &buffer), "AudioQueueAllocateBuffer failed")
         myInfo.mBuffers.append(buffer!)
-        AQTestBufferCallback (&myInfo, myInfo.mQueue!, myInfo.mBuffers[i]);
+        AQTestBufferCallback (myInfo, myInfo.mQueue!, myInfo.mBuffers[i]);
         
         if myInfo.mDone { break }
     }

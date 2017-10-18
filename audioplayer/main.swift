@@ -89,11 +89,10 @@ func AQTestBufferCallback(_ info:AQTestInfo,
                           _ inAQ:AudioQueueRef,
                           _ inCompleteAQBuffer:AudioQueueBufferRef)
 {
-    var numBytes :UInt32 = 0
+    var numBytes :UInt32 = inCompleteAQBuffer.pointee.mAudioDataBytesCapacity
     var nPackets :UInt32 = info.mNumPacketsToRead
     
-    var result :OSStatus = AudioFileReadPackets(info.mAudioFile!, false, &numBytes, info.mPacketDescs, info.mCurrentPacket, &nPackets,
-                                                inCompleteAQBuffer.pointee.mAudioData)
+    var result:OSStatus = AudioFileReadPacketData(info.mAudioFile!, true, &numBytes, info.mPacketDescs, info.mCurrentPacket, &nPackets, inCompleteAQBuffer.pointee.mAudioData)
     if result != 0 {
         print("Error reading from file: \(result)\n")
         exit(1)

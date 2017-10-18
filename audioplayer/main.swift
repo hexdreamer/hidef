@@ -39,390 +39,422 @@
  POSSIBILITY OF SUCH DAMAGE.
  */
 // TODO: CoreFlat include defines...
-#if !defined(__COREAUDIO_USE_FLAT_INCLUDES__)
-    #include <AudioToolbox/AudioQueue.h>
-    #include <AudioToolbox/AudioFile.h>
-    #include <AudioToolbox/AudioFormat.h>
-    #else
-    #include "AudioQueue.h"
-    #include "AudioFile.h"
-    #include "AudioFormat.h"
-    #endif
-#if TARGET_OS_WIN32
-    #include "QTML.h"
-#endif
-    // helpers
-    #include "CAXException.h"
-    #include "CAStreamBasicDescription.h"
-    #include "CAAudioFileFormats.h"
-    
-    static const int kNumberBuffers = 3;
-    static UInt32 gIsRunning = 0;
-    
-    struct AQTestInfo {
-        AudioFileID						mAudioFile;
-        CAStreamBasicDescription		mDataFormat;
-        AudioChannelLayout *			mChannelLayout;
-        UInt32							mChannelLayoutSize;
-        AudioQueueRef					mQueue;
-        AudioQueueBufferRef				mBuffers[kNumberBuffers];
-        SInt64							mCurrentPacket;
-        UInt32							mNumPacketsToRead;
-        AudioStreamPacketDescription *	mPacketDescs;
-        bool							mDone;
-        
-        AQTestInfo ()
-        : mChannelLayout (NULL),
-        mPacketDescs(NULL)
-        {}
-        
-        ~AQTestInfo ()
-        {
-        delete [] mChannelLayout;
-        delete [] mPacketDescs;
-        }
-    };
-    
-    static void AQTestBufferCallback(void *					inUserData,
-    AudioQueueRef			inAQ,
-    AudioQueueBufferRef		inCompleteAQBuffer)
+//#if !defined(__COREAUDIO_USE_FLAT_INCLUDES__)
+//    #include <AudioToolbox/AudioQueue.h>
+//    #include <AudioToolbox/AudioFile.h>
+//    #include <AudioToolbox/AudioFormat.h>
+//#else
+//    #include "AudioQueue.h"
+//    #include "AudioFile.h"
+//    #include "AudioFormat.h"
+//#endif
+//#if TARGET_OS_WIN32
+//    #include "QTML.h"
+//#endif
+// helpers
+//#include "CAXException.h"
+//#include "CAStreamBasicDescription.h"
+//#include "CAAudioFileFormats.h"
+
+import AudioToolbox
+
+let kNumberBuffers = 3;
+var gIsRunning :Bool = false;
+
+class AQTestInfo {
+    var mAudioFile:AudioFileID!
+    var mDataFormat:AudioStreamBasicDescription!
+    var mChannelLayout:UnsafeMutablePointer<AudioChannelLayout>!
+    var mChannelLayoutSize:UInt32 = 0
+    var mQueue:AudioQueueRef!
+    var mBuffers:[AudioQueueBufferRef] = [AudioQueueBufferRef]()
+    var mCurrentPacket:Int64 = 0
+    var mNumPacketsToRead:UInt32 = 0
+    var mPacketDescs:UnsafeMutablePointer<AudioStreamPacketDescription>!
+    var mDone:Bool = false
+	
+    init()
+//        : mChannelLayout (NULL),
+//          mPacketDescs(NULL)
+          {}
+	
+//    ~AQTestInfo ()
+//    {
+//        delete [] mChannelLayout;
+//        delete [] mPacketDescs;
+//    }
+}
+
+func AQTestBufferCallback(_ inUserData:UnsafeMutableRawPointer?,
+                          _ inAQ:AudioQueueRef,
+                          _ inCompleteAQBuffer:AudioQueueBufferRef)
 {
-    AQTestInfo * myInfo = (AQTestInfo *)inUserData;
-    if (myInfo->mDone) return;
+    let info = inUserData!.load(as:AQTestInfo.self)
+    if info.mDone { return };
     
-    UInt32 numBytes;
-    UInt32 nPackets = myInfo->mNumPacketsToRead;
+    var numBytes :UInt32 = 0
+    var nPackets :UInt32 = info.mNumPacketsToRead
     
-    OSStatus result = AudioFileReadPackets(myInfo->mAudioFile, false, &numBytes, myInfo->mPacketDescs, myInfo->mCurrentPacket, &nPackets,
-                                           inCompleteAQBuffer->mAudioData);
-    if (result) {
-        DebugMessageN1 ("Error reading from file: %d\n", (int)result);
-        exit(1);
+    var result :OSStatus = AudioFileReadPackets(info.mAudioFile!, false, &numBytes, info.mPacketDescs, info.mCurrentPacket, &nPackets,
+                                                inCompleteAQBuffer.pointee.mAudioData)
+    if result != 0 {
+        print("Error reading from file: \(result)\n")
+        exit(1)
     }
     
     if (nPackets > 0) {
-        inCompleteAQBuffer->mAudioDataByteSize = numBytes;
+        inCompleteAQBuffer.pointee.mAudioDataByteSize = numBytes
         
-        AudioQueueEnqueueBuffer(inAQ, inCompleteAQBuffer, (myInfo->mPacketDescs ? nPackets : 0), myInfo->mPacketDescs);
+        AudioQueueEnqueueBuffer(inAQ, inCompleteAQBuffer, (info.mPacketDescs != nil ? nPackets : UInt32(0)), info.mPacketDescs)
         
-        myInfo->mCurrentPacket += nPackets;
+        info.mCurrentPacket += Int64(nPackets)
     } else {
-        result = AudioQueueStop(myInfo->mQueue, false);
-        if (result) {
-            DebugMessageN1 ("AudioQueueStop(false) failed: %d", (int)result);
-            exit(1);
+        result = AudioQueueStop(info.mQueue!, false)
+        if result != 0 {
+            print ("AudioQueueStop(false) failed: \(result)")
+            exit(1)
         }
         // reading nPackets == 0 is our EOF condition
-        myInfo->mDone = true;
+        info.mDone = true;
     }
 }
     
-    static void usage()
+func usage()
 {
-    #if !TARGET_OS_WIN32
-        const char *progname = getprogname();
-    #else
-        const char *progname = "aqplay";
-    #endif
-    fprintf(stderr,
-            "Usage:\n"
-        "%s [option...] audio_file\n\n"
-        "Options: (may appear before or after arguments)\n"
-        "  {-v | --volume} VOLUME\n"
-        "    set the volume for playback of the file\n"
-        "  {-h | --help}\n"
-        "    print help\n"
-        "  {-t | --time} TIME\n"
-        "    play for TIME seconds\n"
-        "  {-r | --rate} RATE\n"
-        "    play at playback rate\n"
-        "  {-q | --rQuality} QUALITY\n"
-        "    set the quality used for rate-scaled playback (default is 0 - low quality, 1 - high quality)\n"
-        "  {-d | --debug}\n"
-        "    debug print output\n"
-        , progname);
-    exit(1);
+//    #if !TARGET_OS_WIN32
+//        const char *progname = getprogname();
+//    #else
+        let progname = "aqplay"
+//    #endif
+    print(
+        """
+        Usage:
+        \(progname) [option...] audio_file
+        
+        Options: (may appear before or after arguments)
+          {-v | --volume} VOLUME
+            set the volume for playback of the file
+          {-h | --help}
+            print help
+          {-t | --time} TIME
+            play for TIME seconds
+          {-r | --rate} RATE
+            play at playback rate
+          {-q | --rQuality} QUALITY
+            set the quality used for rate-scaled playback (default is 0 - low quality, 1 - high quality)
+          {-d | --debug}
+            debug print output
+        """
+        )
+    exit(1)
 }
     
-void	MissingArgument()
-    {
-        fprintf(stderr, "Missing argument\n");
-        usage();
+func MissingArgument()
+{
+    print("Missing argument\n")
+    usage();
 }
     
-void	MyAudioQueuePropertyListenerProc (  void *              inUserData,
-                                                AudioQueueRef           inAQ,
-                                                AudioQueuePropertyID    inID)
+func MyAudioQueuePropertyListenerProc(_ inUserData:UnsafeMutableRawPointer?,
+                                      _ inAQ:AudioQueueRef,
+                                      _ inID:AudioQueuePropertyID)
 {
-    UInt32 size = sizeof(gIsRunning);
-    OSStatus err = AudioQueueGetProperty (inAQ, kAudioQueueProperty_IsRunning, &gIsRunning, &size);
-    if (err)
-    gIsRunning = 0;
+    var size :UInt32 = UInt32(MemoryLayout<UInt32>.size)
+    let err :OSStatus = AudioQueueGetProperty(inAQ, kAudioQueueProperty_IsRunning, &gIsRunning, &size)
+    if err != 0 {
+        gIsRunning = false
+    }
 }
     
-    // we only use time here as a guideline
-    // we're really trying to get somewhere between 16K and 64K buffers, but not allocate too much if we don't need it
-void CalculateBytesForTime (CAStreamBasicDescription & inDesc, UInt32 inMaxPacketSize, Float64 inSeconds, UInt32 *outBufferSize, UInt32 *outNumPackets)
+// we only use time here as a guideline
+// we're really trying to get somewhere between 16K and 64K buffers, but not allocate too much if we don't need it
+func CalculateBytesForTime(_ inDesc:AudioStreamBasicDescription, _ inMaxPacketSize:UInt32, _ inSeconds:Float64) -> (UInt32,UInt32)
 {
-    static const int maxBufferSize = 0x10000; // limit size to 64K
-    static const int minBufferSize = 0x4000; // limit size to 16K
-    
-    if (inDesc.mFramesPerPacket) {
-        Float64 numPacketsForTime = inDesc.mSampleRate / inDesc.mFramesPerPacket * inSeconds;
-        *outBufferSize = numPacketsForTime * inMaxPacketSize;
+    let maxBufferSize:UInt32 = 0x10000; // limit size to 64K
+    let minBufferSize:UInt32 = 0x4000; // limit size to 16K
+    var outBufferSize, outNumPackets :UInt32
+    if inDesc.mFramesPerPacket > 0 {
+        let numPacketsForTime:Float64 = inDesc.mSampleRate / Float64(inDesc.mFramesPerPacket) * inSeconds
+        outBufferSize = UInt32(numPacketsForTime * Float64(inMaxPacketSize))
     } else {
         // if frames per packet is zero, then the codec has no predictable packet == time
         // so we can't tailor this (we don't know how many Packets represent a time period
         // we'll just return a default buffer size
-        *outBufferSize = maxBufferSize > inMaxPacketSize ? maxBufferSize : inMaxPacketSize;
+        outBufferSize = maxBufferSize > inMaxPacketSize ? maxBufferSize : inMaxPacketSize;
     }
     
     // we're going to limit our size to our default
-    if (*outBufferSize > maxBufferSize && *outBufferSize > inMaxPacketSize)
-    *outBufferSize = maxBufferSize;
-    else {
+    if outBufferSize > maxBufferSize && outBufferSize > inMaxPacketSize {
+        outBufferSize = maxBufferSize;
+    } else {
         // also make sure we're not too small - we don't want to go the disk for too small chunks
-        if (*outBufferSize < minBufferSize)
-        *outBufferSize = minBufferSize;
+        if outBufferSize < minBufferSize {
+            outBufferSize = minBufferSize;
+        }
     }
-    *outNumPackets = *outBufferSize / inMaxPacketSize;
+    outNumPackets = outBufferSize / inMaxPacketSize;
+    return (outBufferSize, outNumPackets)
 }
     
     
-int main (int argc, const char * argv[]) 
+func main(_ argc:Int, _ argv:[String]) -> Int
 {
-    #if TARGET_OS_WIN32
-        InitializeQTML(0L);
-    #endif
-    const char *fpath = NULL;
-    Float32 volume = 1;
-    Float32 duration = -1;
-    Float32 currentTime = 0.0;
-    Float32 rate = 0;
-    int rQuality = 0;
+    //    #if TARGET_OS_WIN32
+    //        InitializeQTML(0L);
+    //    #endif
+    var tmpfpath:String?
+    var volume:Float32 = 1
+    var duration:Float32 = 0
+    var currentTime:Float32 = 0.0
+    var rate:Float32? = 0
+    var rQuality:Int? = 0
     
-    bool doPrint = false;
-    for (int i = 1; i < argc; ++i) {
-        const char *arg = argv[i];
-        if (arg[0] != '-') {
-            if (fpath != NULL) {
-                fprintf(stderr, "may only specify one file to play\n");
-                usage();
+    var doPrint:Bool = false
+    var i = 1 ; while i < argc { defer{i+=1}
+        var arg = argv[i];
+        if arg.first != "-" {
+            if tmpfpath != nil {
+                print("may only specify one file to play\n")
+                usage()
             }
-            fpath = arg;
+            tmpfpath = arg
         } else {
-            arg += 1;
-            if (arg[0] == 'v' || !strcmp(arg, "-volume")) {
-                if (++i == argc)
-                MissingArgument();
+            arg = String(arg.dropFirst())
+            if arg.first == "v" || arg == "-volume" {
+                i+=1; if i == argc {
+                    MissingArgument()
+                }
+                arg = argv[i]
+                volume = Float32(arg)!
+            } else if arg.first == "t" || arg == "-time" {
+                i+=1; if i == argc {
+                    MissingArgument()
+                }
                 arg = argv[i];
-                sscanf(arg, "%f", &volume);
-            } else if (arg[0] == 't' || !strcmp(arg, "-time")) {
-                if (++i == argc)
-                MissingArgument();
+                duration = Float32(arg)!
+            } else if arg.first == "r" || arg == "-rate" {
+                i+=1; if i == argc {
+                    MissingArgument()
+                }
                 arg = argv[i];
-                sscanf(arg, "%f", &duration);
-            } else if (arg[0] == 'r' || !strcmp(arg, "-rate")) {
-                if (++i == argc)
-                MissingArgument();
+                rate = Float32(arg)
+            } else if arg.first == "q" || arg == "-rQuality" {
+                i+=1; if i == argc {
+                    MissingArgument()
+                }
                 arg = argv[i];
-                sscanf(arg, "%f", &rate);
-            } else if (arg[0] == 'q' || !strcmp(arg, "-rQuality")) {
-                if (++i == argc)
-                MissingArgument();
-                arg = argv[i];
-                sscanf(arg, "%d", &rQuality);
-            } else if (arg[0] == 'h' || !strcmp(arg, "-help")) {
-                usage();
-            } else if (arg[0] == 'd' || !strcmp(arg, "-debug")) {
-                doPrint = true;
+                rQuality = Int(arg)
+            } else if arg.first == "h" || arg == "-help" {
+                usage()
+            } else if arg.first == "d" || arg == "-debug" {
+                doPrint = true
             } else {
-                fprintf(stderr, "unknown argument: %s\n\n", arg - 1);
-                usage();
+                print("unknown argument: \(arg)\n\n")
+                usage()
             }
         }
     }
     
-    if (fpath == NULL)
-    usage();
+    guard let fpath = tmpfpath else {
+        usage(); fatalError()
+    }
     
-    if (doPrint)
-    printf ("Playing file: %s\n", fpath);
+    if doPrint {
+        print("Playing file: \(fpath)\n")
+    }
     
-    try {
-        AQTestInfo myInfo;
+    //    do {
+    var myInfo:AQTestInfo = AQTestInfo()
+    
+    let sndFile:URL = URL(fileURLWithPath:fpath)
+    //if (!sndFile) XThrowIfError (!sndFile, "can't parse file path");
+    var fileID:AudioFileID?
+    var result:OSStatus = AudioFileOpenURL(sndFile as CFURL, AudioFilePermissions.readPermission, 0/*inFileTypeHint*/, &fileID)
+    myInfo.mAudioFile = fileID
+    //CFRelease (sndFile);
+    
+    XThrowIfError(result, "AudioFileOpen failed")
+    
+    var size:UInt32 = 0
+    XThrowIfError(AudioFileGetPropertyInfo(myInfo.mAudioFile!,
+                                           kAudioFilePropertyFormatList, &size, nil), "couldn't get file's format list info")
+    var numFormats:UInt32 = size / UInt32(MemoryLayout<AudioFormatListItem>.size)
+    var formatList = UnsafeMutablePointer<AudioFormatListItem>.allocate(capacity:Int(numFormats))
+    
+    XThrowIfError(AudioFileGetProperty(myInfo.mAudioFile!,
+                                       kAudioFilePropertyFormatList, &size, formatList), "couldn't get file's data format");
+    numFormats = size / UInt32(MemoryLayout<AudioFormatListItem>.size) // we need to reassess the actual number of formats when we get it
+    if numFormats == 1 {
+        // this is the common case
+        myInfo.mDataFormat = formatList[0].mASBD;
         
-        CFURLRef sndFile = CFURLCreateFromFileSystemRepresentation (NULL, (const UInt8 *)fpath, strlen(fpath), false);
-        if (!sndFile) XThrowIfError (!sndFile, "can't parse file path");
-        
-        OSStatus result = AudioFileOpenURL (sndFile, 0x1/*fsRdPerm*/, 0/*inFileTypeHint*/, &myInfo.mAudioFile);
-        CFRelease (sndFile);
-        
-        XThrowIfError(result, "AudioFileOpen failed");
-        
-        UInt32 size;
-        XThrowIfError(AudioFileGetPropertyInfo(myInfo.mAudioFile,
-        kAudioFilePropertyFormatList, &size, NULL), "couldn't get file's format list info");
-        UInt32 numFormats = size / sizeof(AudioFormatListItem);
-        AudioFormatListItem *formatList = new AudioFormatListItem [ numFormats ];
-        
-        XThrowIfError(AudioFileGetProperty(myInfo.mAudioFile,
-        kAudioFilePropertyFormatList, &size, formatList), "couldn't get file's data format");
-        numFormats = size / sizeof(AudioFormatListItem); // we need to reassess the actual number of formats when we get it
-        if (numFormats == 1) {
-            // this is the common case
-            myInfo.mDataFormat = formatList[0].mASBD;
-            
-            // see if there is a channel layout (multichannel file)
-            result = AudioFileGetPropertyInfo(myInfo.mAudioFile, kAudioFilePropertyChannelLayout, &myInfo.mChannelLayoutSize, NULL);
-            if (result == noErr && myInfo.mChannelLayoutSize > 0) {
-                myInfo.mChannelLayout = (AudioChannelLayout *)new char [myInfo.mChannelLayoutSize];
-                XThrowIfError(AudioFileGetProperty(myInfo.mAudioFile, kAudioFilePropertyChannelLayout, &myInfo.mChannelLayoutSize, myInfo.mChannelLayout), "get audio file's channel layout");
-            }
-        } else {
-            if (doPrint) {
-                printf ("File has a %d layered data format:\n", (int)numFormats);
-                for (unsigned int i = 0; i < numFormats; ++i)
-                CAStreamBasicDescription(formatList[i].mASBD).Print();
-            }
-            // now we should look to see which decoders we have on the system
-            XThrowIfError(AudioFormatGetPropertyInfo(kAudioFormatProperty_DecodeFormatIDs, 0, NULL, &size), "couldn't get decoder id's");
-            UInt32 numDecoders = size / sizeof(OSType);
-            OSType *decoderIDs = new OSType [ numDecoders ];
-            XThrowIfError(AudioFormatGetProperty(kAudioFormatProperty_DecodeFormatIDs, 0, NULL, &size, decoderIDs), "couldn't get decoder id's");
-            unsigned int i = 0;
-            for (; i < numFormats; ++i) {
-                OSType decoderID = formatList[i].mASBD.mFormatID;
-                bool found = false;
-                for (unsigned int j = 0; j < numDecoders; ++j) {
-                    if (decoderID == decoderIDs[j]) {
-                        found = true;
-                        break;
-                    }
-                }
-                if (found) break;
-            }
-            delete [] decoderIDs;
-            
-            if (i >= numFormats) {
-                fprintf (stderr, "Cannot play any of the formats in this file\n");
-                throw kAudioFileUnsupportedDataFormatError;
-            }
-            myInfo.mDataFormat = formatList[i].mASBD;
-            myInfo.mChannelLayoutSize = sizeof(AudioChannelLayout);
-            myInfo.mChannelLayout = (AudioChannelLayout*)new char [myInfo.mChannelLayoutSize];
-            myInfo.mChannelLayout->mChannelLayoutTag = formatList[i].mChannelLayoutTag;
-            myInfo.mChannelLayout->mChannelBitmap = 0;
-            myInfo.mChannelLayout->mNumberChannelDescriptions = 0;
+        // see if there is a channel layout (multichannel file)
+        result = AudioFileGetPropertyInfo(myInfo.mAudioFile, kAudioFilePropertyChannelLayout, &myInfo.mChannelLayoutSize, nil);
+        if result == noErr && myInfo.mChannelLayoutSize > 0 {
+            myInfo.mChannelLayout = UnsafeMutableRawPointer.allocate(bytes:Int(myInfo.mChannelLayoutSize), alignedTo:0).assumingMemoryBound(to: AudioChannelLayout.self)
+            XThrowIfError(AudioFileGetProperty(myInfo.mAudioFile!, kAudioFilePropertyChannelLayout, &myInfo.mChannelLayoutSize, myInfo.mChannelLayout!), "get audio file's channel layout")
         }
-        delete [] formatList;
-        
+    } else {
         if (doPrint) {
-            printf ("Playing format: ");
-            myInfo.mDataFormat.Print();
+            print("File has a \(numFormats) layered data format:\n")
+            for i in 0..<numFormats {
+                let format = formatList[Int(i)].mASBD
+                //print("\(format.)%s %s\n", indent, name, AsString(buf, sizeof(buf)));
+            }
         }
-        
-        XThrowIfError(AudioQueueNewOutput(&myInfo.mDataFormat, AQTestBufferCallback, &myInfo,
-                                          CFRunLoopGetCurrent(), kCFRunLoopCommonModes, 0, &myInfo.mQueue), "AudioQueueNew failed");
-        
-        UInt32 bufferByteSize;
-        // we need to calculate how many packets we read at a time, and how big a buffer we need
-        // we base this on the size of the packets in the file and an approximate duration for each buffer
-        {
-            bool isFormatVBR = (myInfo.mDataFormat.mBytesPerPacket == 0 || myInfo.mDataFormat.mFramesPerPacket == 0);
-            
-            // first check to see what the max size of a packet is - if it is bigger
-            // than our allocation default size, that needs to become larger
-            UInt32 maxPacketSize;
-            size = sizeof(maxPacketSize);
-            XThrowIfError(AudioFileGetProperty(myInfo.mAudioFile,
-                                               kAudioFilePropertyPacketSizeUpperBound, &size, &maxPacketSize), "couldn't get file's max packet size");
-            
-            // adjust buffer size to represent about a half second of audio based on this format
-            CalculateBytesForTime (myInfo.mDataFormat, maxPacketSize, 0.5/*seconds*/, &bufferByteSize, &myInfo.mNumPacketsToRead);
-            
-            if (isFormatVBR)
-            myInfo.mPacketDescs = new AudioStreamPacketDescription [myInfo.mNumPacketsToRead];
-            else
-            myInfo.mPacketDescs = NULL; // we don't provide packet descriptions for constant bit rate formats (like linear PCM)
-            
-            if (doPrint)
-            printf ("Buffer Byte Size: %d, Num Packets to Read: %d\n", (int)bufferByteSize, (int)myInfo.mNumPacketsToRead);
-        }
-        
-        // (2) If the file has a cookie, we should get it and set it on the AQ
-        size = sizeof(UInt32);
-        result = AudioFileGetPropertyInfo (myInfo.mAudioFile, kAudioFilePropertyMagicCookieData, &size, NULL);
-        
-        if (!result && size) {
-            char* cookie = new char [size];
-            XThrowIfError (AudioFileGetProperty (myInfo.mAudioFile, kAudioFilePropertyMagicCookieData, &size, cookie), "get cookie from file");
-            XThrowIfError (AudioQueueSetProperty(myInfo.mQueue, kAudioQueueProperty_MagicCookie, cookie, size), "set cookie on queue");
-            delete [] cookie;
-        }
-        
-        // set ACL if there is one
-        if (myInfo.mChannelLayout)
-        XThrowIfError(AudioQueueSetProperty(myInfo.mQueue, kAudioQueueProperty_ChannelLayout, myInfo.mChannelLayout, myInfo.mChannelLayoutSize), "set channel layout on queue");
-        
-        // prime the queue with some data before starting
-        myInfo.mDone = false;
-        myInfo.mCurrentPacket = 0;
-        for (int i = 0; i < kNumberBuffers; ++i) {
-            XThrowIfError(AudioQueueAllocateBuffer(myInfo.mQueue, bufferByteSize, &myInfo.mBuffers[i]), "AudioQueueAllocateBuffer failed");
-            
-            AQTestBufferCallback (&myInfo, myInfo.mQueue, myInfo.mBuffers[i]);
-            
-            if (myInfo.mDone) break;
-        }
-        // set the volume of the queue
-        XThrowIfError (AudioQueueSetParameter(myInfo.mQueue, kAudioQueueParam_Volume, volume), "set queue volume");
-        
-        XThrowIfError (AudioQueueAddPropertyListener (myInfo.mQueue, kAudioQueueProperty_IsRunning, MyAudioQueuePropertyListenerProc, NULL), "add listener");
-        
-        #if !TARGET_OS_IPHONE
-            if (rate > 0) {
-                UInt32 propValue = 1;
-                XThrowIfError (AudioQueueSetProperty (myInfo.mQueue, kAudioQueueProperty_EnableTimePitch, &propValue, sizeof(propValue)), "enable time pitch");
-                
-                propValue = rQuality ? kAudioQueueTimePitchAlgorithm_Spectral : kAudioQueueTimePitchAlgorithm_TimeDomain;
-                XThrowIfError (AudioQueueSetProperty (myInfo.mQueue, kAudioQueueProperty_TimePitchAlgorithm, &propValue, sizeof(propValue)), "time pitch algorithm");
-                
-                propValue = (rate == 1.0f ? 1 : 0); // bypass rate if 1.0
-                XThrowIfError (AudioQueueSetProperty (myInfo.mQueue, kAudioQueueProperty_TimePitchBypass, &propValue, sizeof(propValue)), "bypass time pitch");
-                if (rate != 1) {
-                    XThrowIfError (AudioQueueSetParameter (myInfo.mQueue, kAudioQueueParam_PlayRate, rate), "set playback rate");
-                }
-                
-                if (doPrint) {
-                    printf ("Enable rate-scaled playback (rate = %.2f) using %s algorithm\n", rate, (rQuality ? "Spectral": "Time Domain"));
+        // now we should look to see which decoders we have on the system
+        XThrowIfError(AudioFormatGetPropertyInfo(kAudioFormatProperty_DecodeFormatIDs, 0, nil, &size), "couldn't get decoder id's");
+        var numDecoders:UInt32 = size / UInt32(MemoryLayout<OSType>.size)
+        var decoderIDs = UnsafeMutablePointer<OSType>.allocate(capacity:Int(numDecoders))
+        XThrowIfError(AudioFormatGetProperty(kAudioFormatProperty_DecodeFormatIDs, 0, nil, &size, decoderIDs), "couldn't get decoder id's")
+        var i:Int = 0
+        while i < numFormats { defer {i+=1}
+            let decoderID:OSType = formatList[i].mASBD.mFormatID
+            var found:Bool = false
+            for j in 0..<numDecoders {
+                if (decoderID == decoderIDs[Int(j)]) {
+                    found = true;
+                    break;
                 }
             }
-        #endif
-        // lets start playing now - stop is called in the AQTestBufferCallback when there's
-        // no more to read from the file
-        XThrowIfError(AudioQueueStart(myInfo.mQueue, NULL), "AudioQueueStart failed");
+            if found { break }
+        }
+        //delete [] decoderIDs;
         
-        do {
-            CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.25, false);
-            currentTime += .25;
-            if (duration > 0 && currentTime >= duration)
-            break;
-            
-        } while (gIsRunning);
-        
-        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, false);
-        
-        XThrowIfError(AudioQueueDispose(myInfo.mQueue, true), "AudioQueueDispose(true) failed");
-        XThrowIfError(AudioFileClose(myInfo.mAudioFile), "AudioQueueDispose(false) failed");
+        if (i >= numFormats) {
+            print("Cannot play any of the formats in this file\n")
+            fatalError()
+        }
+        myInfo.mDataFormat = formatList[i].mASBD;
+        myInfo.mChannelLayoutSize = UInt32(MemoryLayout<AudioChannelLayout>.size)
+        myInfo.mChannelLayout = UnsafeMutableRawPointer.allocate(bytes:Int(myInfo.mChannelLayoutSize), alignedTo:0).assumingMemoryBound(to: AudioChannelLayout.self)
+        myInfo.mChannelLayout?.pointee.mChannelLayoutTag = formatList[i].mChannelLayoutTag
+        myInfo.mChannelLayout?.pointee.mChannelBitmap = []
+        myInfo.mChannelLayout?.pointee.mNumberChannelDescriptions = 0
     }
-    catch (CAXException e) {
-        char buf[256];
-        fprintf(stderr, "Error: %s (%s)\n", e.mOperation, e.FormatError(buf));
+    //delete [] formatList;
+    
+    if (doPrint) {
+        print("Playing format: ")
+        //myInfo.mDataFormat.Print();
     }
-    catch (...) {
-        fprintf(stderr, "Unspecified exception\n");
+    var audioQueue:AudioQueueRef?
+    XThrowIfError(AudioQueueNewOutput(&myInfo.mDataFormat!, AQTestBufferCallback, &myInfo,
+                                      CFRunLoopGetCurrent(), RunLoopMode.commonModes as CFString, 0, &audioQueue), "AudioQueueNew failed")
+    myInfo.mQueue = audioQueue
+    var bufferByteSize:UInt32
+    // we need to calculate how many packets we read at a time, and how big a buffer we need
+    // we base this on the size of the packets in the file and an approximate duration for each buffer
+    //        {
+    let isFormatVBR:Bool = (myInfo.mDataFormat!.mBytesPerPacket == 0 || myInfo.mDataFormat!.mFramesPerPacket == 0);
+    
+    // first check to see what the max size of a packet is - if it is bigger
+    // than our allocation default size, that needs to become larger
+    var maxPacketSize:UInt32 = 0
+    size = UInt32(MemoryLayout<UInt32>.size)
+    XThrowIfError(AudioFileGetProperty(myInfo.mAudioFile!,
+                                       kAudioFilePropertyPacketSizeUpperBound, &size, &maxPacketSize), "couldn't get file's max packet size");
+    
+    // adjust buffer size to represent about a half second of audio based on this format
+    (bufferByteSize, myInfo.mNumPacketsToRead) = CalculateBytesForTime(myInfo.mDataFormat, maxPacketSize, 0.5/*seconds*/)
+    
+    if isFormatVBR {
+        myInfo.mPacketDescs = UnsafeMutablePointer<AudioStreamPacketDescription>.allocate(capacity:Int(myInfo.mNumPacketsToRead))
+    } else {
+        myInfo.mPacketDescs = nil // we don't provide packet descriptions for constant bit rate formats (like linear PCM)
     }
     
-    return 0;
+    if doPrint {
+        print("Buffer Byte Size: \(bufferByteSize), Num Packets to Read: \(myInfo.mNumPacketsToRead)\n")
+    }
+    //        }
+    
+    // (2) If the file has a cookie, we should get it and set it on the AQ
+    size = UInt32(MemoryLayout<UInt32>.size)
+    result = AudioFileGetPropertyInfo (myInfo.mAudioFile!, kAudioFilePropertyMagicCookieData, &size, nil)
+    
+    if result == noErr && size > 0 {
+        let cookie = UnsafeMutableRawPointer.allocate(bytes: Int(size), alignedTo: 0)
+        XThrowIfError (AudioFileGetProperty (myInfo.mAudioFile!, kAudioFilePropertyMagicCookieData, &size, cookie), "get cookie from file");
+        XThrowIfError (AudioQueueSetProperty(myInfo.mQueue!, kAudioQueueProperty_MagicCookie, cookie, size), "set cookie on queue");
+        //delete [] cookie;
+    }
+    
+    // set ACL if there is one
+    if myInfo.mChannelLayout != nil {
+        XThrowIfError(AudioQueueSetProperty(myInfo.mQueue!, kAudioQueueProperty_ChannelLayout, myInfo.mChannelLayout!, myInfo.mChannelLayoutSize), "set channel layout on queue")
+    }
+    // prime the queue with some data before starting
+    myInfo.mDone = false
+    myInfo.mCurrentPacket = 0
+    for i in 0..<kNumberBuffers {
+        var buffer:AudioQueueBufferRef?
+        XThrowIfError(AudioQueueAllocateBuffer(myInfo.mQueue!, bufferByteSize, &buffer), "AudioQueueAllocateBuffer failed")
+        myInfo.mBuffers.append(buffer!)
+        AQTestBufferCallback (&myInfo, myInfo.mQueue!, myInfo.mBuffers[i]);
+        
+        if myInfo.mDone { break }
+    }
+    // set the volume of the queue
+    XThrowIfError (AudioQueueSetParameter(myInfo.mQueue!, kAudioQueueParam_Volume, volume), "set queue volume")
+    
+    XThrowIfError (AudioQueueAddPropertyListener (myInfo.mQueue!, kAudioQueueProperty_IsRunning, MyAudioQueuePropertyListenerProc, nil), "add listener")
+    
+    #if !TARGET_OS_IPHONE
+        if rate! > 0 {
+            var propValue:UInt32 = 1
+            XThrowIfError (AudioQueueSetProperty (myInfo.mQueue!, kAudioQueueProperty_EnableTimePitch, &propValue, UInt32(MemoryLayout<UInt32>.size)), "enable time pitch")
+            
+            propValue = (rQuality != nil) ? kAudioQueueTimePitchAlgorithm_Spectral : kAudioQueueTimePitchAlgorithm_TimeDomain;
+            XThrowIfError (AudioQueueSetProperty (myInfo.mQueue!, kAudioQueueProperty_TimePitchAlgorithm, &propValue, UInt32(MemoryLayout<UInt32>.size)), "time pitch algorithm")
+            
+            propValue = (rate == 1.0 ? 1 : 0); // bypass rate if 1.0
+            XThrowIfError (AudioQueueSetProperty (myInfo.mQueue!, kAudioQueueProperty_TimePitchBypass, &propValue, UInt32(MemoryLayout<UInt32>.size)), "bypass time pitch");
+            if rate != 1 {
+                XThrowIfError (AudioQueueSetParameter (myInfo.mQueue!, kAudioQueueParam_PlayRate, rate!), "set playback rate")
+            }
+            
+            if doPrint {
+                print("Enable rate-scaled playback (rate = \(rate!) using \(((rQuality != nil) ? "Spectral": "Time Domain")) algorithm\n")
+            }
+        }
+    #endif
+    // lets start playing now - stop is called in the AQTestBufferCallback when there's
+    // no more to read from the file
+    XThrowIfError(AudioQueueStart(myInfo.mQueue!, nil), "AudioQueueStart failed")
+    
+    repeat {
+        CFRunLoopRunInMode(CFRunLoopMode.defaultMode, 0.25, false)
+        currentTime += 0.25
+        if duration > 0 && currentTime >= duration {
+            break
+        }
+    } while (gIsRunning)
+    
+    CFRunLoopRunInMode(CFRunLoopMode.defaultMode, 1, false)
+    
+    XThrowIfError(AudioQueueDispose(myInfo.mQueue!, true), "AudioQueueDispose(true) failed");
+    XThrowIfError(AudioFileClose(myInfo.mAudioFile!), "AudioQueueDispose(false) failed");
+    //    }
+    //    catch (CAXException e) {
+    //        char buf[256];
+    //        fprintf(stderr, "Error: %s (%s)\n", e.mOperation, e.FormatError(buf));
+    //    }
+    //    catch (...) {
+    //        fprintf(stderr, "Unspecified exception\n");
+    //    }
+    
+    return 0
 }
+
+func XThrowIfError(_ status:OSStatus, _ message:String) {
+    if status != noErr {
+        fatalError(message)
+    }
+}
+
+
+let result = main(Int(CommandLine.argc), CommandLine.arguments)
+print("result: \(result)")
+
+

@@ -102,7 +102,7 @@ class PDAudioPlayer {
         }
     }
     
-    static private func computeBufferSizeAndPacketCount(format:AudioStreamBasicDescription, maxPacketSize:UInt32, seconds:Float64) -> (UInt32, UInt32) {
+    static private func computeBufferSizeAndPacketCount(format:AudioStreamBasicDescription, maxPacketSize:UInt32, seconds:Float64) -> (UInt32,UInt32) {
         let maxBufferSize :UInt32 = 0x50000
         let minBufferSize :UInt32 = 0x4000
         

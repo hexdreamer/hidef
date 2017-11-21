@@ -285,10 +285,12 @@ func main(_ argc:Int, _ argv:[String]) -> Int
         myInfo.mDataFormat = formatList[0].mASBD;
         
         // see if there is a channel layout (multichannel file)
-        result = AudioFileGetPropertyInfo(myInfo.mAudioFile, kAudioFilePropertyChannelLayout, &myInfo.mChannelLayoutSize, nil);
-        if result == noErr && myInfo.mChannelLayoutSize > 0 {
+        size = 0
+        result = AudioFileGetPropertyInfo(myInfo.mAudioFile, kAudioFilePropertyChannelLayout, &size, nil);
+        if result == noErr && size > 0 {
             myInfo.mChannelLayout = UnsafeMutableRawPointer.allocate(bytes:Int(myInfo.mChannelLayoutSize), alignedTo:0).assumingMemoryBound(to: AudioChannelLayout.self)
-            XThrowIfError(AudioFileGetProperty(myInfo.mAudioFile!, kAudioFilePropertyChannelLayout, &myInfo.mChannelLayoutSize, myInfo.mChannelLayout!), "get audio file's channel layout")
+            XThrowIfError(AudioFileGetProperty(myInfo.mAudioFile!, kAudioFilePropertyChannelLayout, &size, myInfo.mChannelLayout!), "get audio file's channel layout")
+            debugDescription(channelLayoutRef:myInfo.mChannelLayout!)
         }
     } else {
         if (doPrint) {

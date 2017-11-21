@@ -14,9 +14,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "B946C1441F8C362900FB8D8B"
-               BuildableName = "audioplayer"
-               BlueprintName = "audioplayer"
+               BlueprintIdentifier = "B983DAE61F75FEC60046A314"
+               BuildableName = "HiDef.app"
+               BlueprintName = "HiDef"
                ReferencedContainer = "container:HiDef.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -29,13 +29,33 @@
       language = ""
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "B983DAFA1F75FEC60046A314"
+               BuildableName = "HiDefTests.xctest"
+               BlueprintName = "HiDefTests"
+               ReferencedContainer = "container:HiDef.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "B983DB051F75FEC60046A314"
+               BuildableName = "HiDefUITests.xctest"
+               BlueprintName = "HiDefUITests"
+               ReferencedContainer = "container:HiDef.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "B946C1441F8C362900FB8D8B"
-            BuildableName = "audioplayer"
-            BlueprintName = "audioplayer"
+            BlueprintIdentifier = "B983DAE61F75FEC60046A314"
+            BuildableName = "HiDef.app"
+            BlueprintName = "HiDef"
             ReferencedContainer = "container:HiDef.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
@@ -57,22 +77,12 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "B946C1441F8C362900FB8D8B"
-            BuildableName = "audioplayer"
-            BlueprintName = "audioplayer"
+            BlueprintIdentifier = "B983DAE61F75FEC60046A314"
+            BuildableName = "HiDef.app"
+            BlueprintName = "HiDef"
             ReferencedContainer = "container:HiDef.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <CommandLineArguments>
-         <CommandLineArgument
-            argument = "/Users/kenny/Projects/TestData/AnvilOfCrom.aiff"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "/Users/kenny/Projects/TestData/Vocalise.m4a"
-            isEnabled = "YES">
-         </CommandLineArgument>
-      </CommandLineArguments>
       <AdditionalOptions>
       </AdditionalOptions>
    </LaunchAction>
@@ -86,9 +96,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "B946C1441F8C362900FB8D8B"
-            BuildableName = "audioplayer"
-            BlueprintName = "audioplayer"
+            BlueprintIdentifier = "B983DAE61F75FEC60046A314"
+            BuildableName = "HiDef.app"
+            BlueprintName = "HiDef"
             ReferencedContainer = "container:HiDef.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

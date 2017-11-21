@@ -8,16 +8,17 @@
 
 import Foundation
 import AudioToolbox
+import AVFoundation
 
 class PDAudioPlayer {
     
     // This is not great architecture, but just a trick to help us get around initialization order problesm. Mostly because we are not fully initialized before we have to capture stuff for AudioQueueNewOutputWithDispatchQueue
     private class InternalData {
-        let source :PDFileAudioSource
+        let source :PDAudioSource
         var audioBuffers = [PDAudioBuffer]()
         var mIsRunning: Bool = false
         
-        init(source:PDFileAudioSource) {
+        init(source:PDAudioSource) {
             self.source = source
         }
     }
@@ -25,7 +26,7 @@ class PDAudioPlayer {
     let dispatchQueue :DispatchQueue
     let audioQueue :AudioQueueRef                                      // 3
     private let data :InternalData
-
+    
     static let kNumberBuffers :Int = 3                              // 1
     //var mDataFormat:AudioStreamBasicDescription                     // 2
     //var mBuffers :[AudioQueueBufferRef]                            // 4
@@ -35,13 +36,17 @@ class PDAudioPlayer {
     var mNumPacketsToRead :UInt32                                  // 8
     //var mPacketDescs :UnsafePointer<AudioStreamPacketDescription>?  // 9
     
-    init?(source:PDFileAudioSource) {
+    var isPlaying:Bool {return data.mIsRunning}
+    
+    init?(source:PDAudioSource) {
+        var status:OSStatus
+        
         let tmpData = InternalData(source:source)
         let tmpDispatchQueue = DispatchQueue(label:"AudioPlayer", qos:.default, attributes:[], autoreleaseFrequency:.workItem, target:nil)
         
         var tmpAudioQueue :AudioQueueRef?
         var dataFormat = source.mDataFormat
-        let status = AudioQueueNewOutputWithDispatchQueue(&tmpAudioQueue, &dataFormat, 0, tmpDispatchQueue) { (baqQueue, baqBuffer) in
+        status = AudioQueueNewOutputWithDispatchQueue(&tmpAudioQueue, &dataFormat, 0, tmpDispatchQueue) { (baqQueue, baqBuffer) in
             if !tmpData.mIsRunning {
                 return  // block
             }
@@ -52,11 +57,22 @@ class PDAudioPlayer {
             }
             AudioQueueEnqueueBuffer(baqQueue, baqBuffer, 0, nil)
         }
-        if status != 0 {
+        if status != noErr {
             return nil
         }
         guard let nnAudioQueue = tmpAudioQueue else {
             return nil
+        }
+        if  let cookie = source.cookie,
+            let cookieSize = source.cookieSize {
+            status = AudioQueueSetProperty(nnAudioQueue, kAudioQueueProperty_MagicCookie, cookie, cookieSize)
+            if status != noErr {
+                return nil
+            }
+        }
+        if  let channelLayout = source.channelLayout,
+            let channelLayoutSize = source.channelLayoutSize {
+            status = AudioQueueSetProperty(nnAudioQueue, kAudioQueueProperty_ChannelLayout, channelLayout, channelLayoutSize)
         }
         
         self.dispatchQueue = tmpDispatchQueue
@@ -74,6 +90,7 @@ class PDAudioPlayer {
         }
         AudioQueuePrime(self.audioQueue, 0, nil)
         
+        /*
         let gain :Float32 = 1.0;                                       // 1
         // Optionally, allow user to override gain setting here
         AudioQueueSetParameter (                                  // 2
@@ -81,24 +98,39 @@ class PDAudioPlayer {
             kAudioQueueParam_Volume,                              // 4
             gain                                                  // 5
         );
+        
+        do {
+            try AVAudioSession.sharedInstance().setPreferredSampleRate(source.mDataFormat.mSampleRate)
+        } catch {
+            print("Error")
+        }
+         */
     }
     
     public func play() {
+        print("\(self) requestPlay")
         self.dispatchQueue.async {
             self.data.mIsRunning = true
             AudioQueueStart(self.audioQueue, nil)
+            print("\(self) play")
         }
     }
     
     public func pause() {
+        print("\(self) requestPause")
         self.dispatchQueue.async {
             AudioQueuePause(self.audioQueue)
+            print("\(self) pause")
         }
     }
     
     public func stop() {
+        print("\(self) requestStop")
+        self.data.mIsRunning = false
         self.dispatchQueue.async {
+            print("\(self) stopping...")
             AudioQueueReset(self.audioQueue)
+            print("\(self) stopped")
         }
     }
     
@@ -129,6 +161,10 @@ class PDAudioPlayer {
         return (outBufferSize, outNumPacketsToRead)
     }
 
+    deinit {
+        AudioQueueDispose(self.audioQueue, false)
+        print("\(self) deinitting")
+    }
 }
 
 

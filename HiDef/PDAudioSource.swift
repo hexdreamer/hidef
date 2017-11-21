@@ -11,12 +11,25 @@ import AudioToolbox
 class PDAudioSource {
 
     let mDataFormat:AudioStreamBasicDescription
+    let cookie:UnsafeMutableRawPointer?
+    let cookieSize:UInt32?
+    let channelLayout:UnsafeMutablePointer<AudioChannelLayout>?
+    let channelLayoutSize:UInt32?
     var mCurrentPacket :Int64 = 0
 
     let mPacketDescs :UnsafeMutablePointer<AudioStreamPacketDescription>?  // 9
 
-    init(dataFormat:AudioStreamBasicDescription) {
+    init(dataFormat:AudioStreamBasicDescription,
+         channelLayout:UnsafeMutablePointer<AudioChannelLayout>?,
+         channelLayoutSize:UInt32?,
+         cookie:UnsafeMutableRawPointer?,
+         cookieSize:UInt32?
+        ) {
         self.mDataFormat = dataFormat
+        self.channelLayout = channelLayout
+        self.channelLayoutSize = channelLayoutSize
+        self.cookie = cookie
+        self.cookieSize = cookieSize
         self.mPacketDescs = nil
     }
     

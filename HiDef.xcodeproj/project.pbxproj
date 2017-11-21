@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B900939D1F9865980014998E /* Utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = B900939C1F9865980014998E /* Utils.swift */; };
+		B900939E1F9865980014998E /* Utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = B900939C1F9865980014998E /* Utils.swift */; };
 		B946C1481F8C362900FB8D8B /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = B946C1471F8C362900FB8D8B /* main.swift */; };
 		B96FE2971F7738A6006BE6FE /* Vocalise.m4a in Resources */ = {isa = PBXBuildFile; fileRef = B96FE2961F7738A6006BE6FE /* Vocalise.m4a */; };
 		B983DAEB1F75FEC60046A314 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B983DAEA1F75FEC60046A314 /* AppDelegate.swift */; };
@@ -53,6 +55,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		B900939C1F9865980014998E /* Utils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Utils.swift; path = HiDef/Utils.swift; sourceTree = "<group>"; };
+		B90F75541F97F57900D261EC /* HiDef.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HiDef.entitlements; sourceTree = "<group>"; };
 		B946C1451F8C362900FB8D8B /* audioplayer */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = audioplayer; sourceTree = BUILT_PRODUCTS_DIR; };
 		B946C1471F8C362900FB8D8B /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		B9537F951F7DAFC300EB284E /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -109,6 +113,13 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		B90F75551F97F57900D261EC /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		B946C1461F8C362900FB8D8B /* audioplayer */ = {
 			isa = PBXGroup;
 			children = (
@@ -122,16 +133,18 @@
 			children = (
 				B9537F951F7DAFC300EB284E /* README.md */,
 				B96FE2961F7738A6006BE6FE /* Vocalise.m4a */,
-				B983DB181F75FEFD0046A314 /* PDAudioPlayer.swift */,
 				B9B5426D1F87FEB300111320 /* AnvilOfCrom.aif */,
+				B983DB181F75FEFD0046A314 /* PDAudioPlayer.swift */,
 				B983DB1E1F7733000046A314 /* PDAudioBuffer.swift */,
 				B983DB1C1F77220F0046A314 /* PDAudioSource.swift */,
 				B983DB1A1F770CCB0046A314 /* PDFileAudioSource.swift */,
+				B900939C1F9865980014998E /* Utils.swift */,
 				B983DAE91F75FEC60046A314 /* HiDef */,
 				B983DAFE1F75FEC60046A314 /* HiDefTests */,
 				B983DB091F75FEC60046A314 /* HiDefUITests */,
 				B946C1461F8C362900FB8D8B /* audioplayer */,
 				B983DAE81F75FEC60046A314 /* Products */,
+				B90F75551F97F57900D261EC /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -149,6 +162,7 @@
 		B983DAE91F75FEC60046A314 /* HiDef */ = {
 			isa = PBXGroup;
 			children = (
+				B90F75541F97F57900D261EC /* HiDef.entitlements */,
 				B983DAEA1F75FEC60046A314 /* AppDelegate.swift */,
 				B983DAEC1F75FEC60046A314 /* ViewController.swift */,
 				B983DAEE1F75FEC60046A314 /* Main.storyboard */,
@@ -267,6 +281,14 @@
 					B983DAE61F75FEC60046A314 = {
 						CreatedOnToolsVersion = 9.0;
 						ProvisioningStyle = Automatic;
+						SystemCapabilities = {
+							com.apple.BackgroundModes = {
+								enabled = 1;
+							};
+							com.apple.InterAppAudio = {
+								enabled = 0;
+							};
+						};
 					};
 					B983DAFA1F75FEC60046A314 = {
 						CreatedOnToolsVersion = 9.0;
@@ -336,6 +358,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B946C1481F8C362900FB8D8B /* main.swift in Sources */,
+				B900939E1F9865980014998E /* Utils.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -346,6 +369,7 @@
 				B983DB1D1F77220F0046A314 /* PDAudioSource.swift in Sources */,
 				B983DB191F75FEFD0046A314 /* PDAudioPlayer.swift in Sources */,
 				B983DAED1F75FEC60046A314 /* ViewController.swift in Sources */,
+				B900939D1F9865980014998E /* Utils.swift in Sources */,
 				B983DAEB1F75FEC60046A314 /* AppDelegate.swift in Sources */,
 				B983DB1F1F7733000046A314 /* PDAudioBuffer.swift in Sources */,
 				B983DB1B1F770CCB0046A314 /* PDFileAudioSource.swift in Sources */,
@@ -477,7 +501,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -528,7 +552,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";

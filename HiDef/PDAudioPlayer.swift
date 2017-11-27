@@ -10,22 +10,48 @@ import Foundation
 import AudioToolbox
 import AVFoundation
 
+// We'd like all of this stuff to be static members of PDAudioPlayer, but you can't pass a static method to a C function pointer for AudioQueueAddPropertyListener
+private let _audioQueue:DispatchQueue = DispatchQueue(label:"AudioPlayer", qos:.default, attributes:[.concurrent], autoreleaseFrequency:.workItem, target:nil)
+private let _serialQueue:DispatchQueue = DispatchQueue(label:"AudioPlayer", qos:.default, attributes:[], autoreleaseFrequency:.workItem, target:nil)
+private var _zombieAudioQueues = Set<AudioQueueRef>()
+
+func MyAudioQueuePropertyListenerProc(_ inUserData:UnsafeMutableRawPointer?, _ inAQ:AudioQueueRef, _ inID:AudioQueuePropertyID) {
+    _serialQueue.async {
+        _disposeAudioQueueIfNecessary(inAQ)
+    }
+}
+
+func _disposeAudioQueueIfNecessary(_ audioQueue: AudioQueueRef) {
+    var isRunning:UInt32 = 0
+    var size :UInt32 = UInt32(MemoryLayout<UInt32>.size)
+    let err :OSStatus = AudioQueueGetProperty(audioQueue, kAudioQueueProperty_IsRunning, &isRunning, &size)
+    print("checking for disposal audioQueue:\(audioQueue) isRunning:\(isRunning) zombie:\(_zombieAudioQueues.contains(audioQueue)) err:\(err)")
+    if err == 0 {
+        if isRunning == 0 && _zombieAudioQueues.contains(audioQueue) {
+            print("disposing of audio queue \(audioQueue)...")
+            AudioQueueReset(audioQueue)
+            AudioQueueDispose(audioQueue, true)
+            print("... audio queue \(audioQueue) disposed")
+            _zombieAudioQueues.remove(audioQueue)
+        }
+    }
+}
+
 class PDAudioPlayer {
     
     // This is not great architecture, but just a trick to help us get around initialization order problesm. Mostly because we are not fully initialized before we have to capture stuff for AudioQueueNewOutputWithDispatchQueue
     private class InternalData {
         let source :PDAudioSource
         var audioBuffers = [PDAudioBuffer]()
-        var mIsRunning: Bool = false
+        var playing: Bool = false
         
         init(source:PDAudioSource) {
             self.source = source
         }
     }
     
-    let dispatchQueue :DispatchQueue
-    let audioQueue :AudioQueueRef                                      // 3
-    private let data :InternalData
+    private let audioQueue :AudioQueueRef                                      // 3
+    private let data       :InternalData
     
     static let kNumberBuffers :Int = 3                              // 1
     //var mDataFormat:AudioStreamBasicDescription                     // 2
@@ -36,26 +62,28 @@ class PDAudioPlayer {
     var mNumPacketsToRead :UInt32                                  // 8
     //var mPacketDescs :UnsafePointer<AudioStreamPacketDescription>?  // 9
     
-    var isPlaying:Bool {return data.mIsRunning}
+    var isPlaying:Bool {return data.playing}
     
     init?(source:PDAudioSource) {
         var status:OSStatus
         
         let tmpData = InternalData(source:source)
-        let tmpDispatchQueue = DispatchQueue(label:"AudioPlayer", qos:.default, attributes:[], autoreleaseFrequency:.workItem, target:nil)
         
         var tmpAudioQueue :AudioQueueRef?
         var dataFormat = source.mDataFormat
-        status = AudioQueueNewOutputWithDispatchQueue(&tmpAudioQueue, &dataFormat, 0, tmpDispatchQueue) { (baqQueue, baqBuffer) in
-            if !tmpData.mIsRunning {
-                return  // block
-            }
+        status = AudioQueueNewOutputWithDispatchQueue(&tmpAudioQueue, &dataFormat, 0, _audioQueue) {
+            (baqQueue, baqBuffer) in
             for audioBuffer in tmpData.audioBuffers {
                 if audioBuffer.audioQueueBuffer == baqBuffer {
-                    tmpData.source.fillBuffer(audioBuffer);
+                    if audioBuffer.priming || tmpData.playing {
+                        tmpData.source.fillBuffer(audioBuffer);
+                        audioBuffer.priming = false
+                        AudioQueueEnqueueBuffer(baqQueue, baqBuffer, 0, nil)
+                    } else {
+                        print("Skipping...")
+                    }
                 }
             }
-            AudioQueueEnqueueBuffer(baqQueue, baqBuffer, 0, nil)
         }
         if status != noErr {
             return nil
@@ -75,7 +103,8 @@ class PDAudioPlayer {
             status = AudioQueueSetProperty(nnAudioQueue, kAudioQueueProperty_ChannelLayout, channelLayout, channelLayoutSize)
         }
         
-        self.dispatchQueue = tmpDispatchQueue
+        AudioQueueAddPropertyListener (nnAudioQueue, kAudioQueueProperty_IsRunning, MyAudioQueuePropertyListenerProc, nil)
+
         self.data = tmpData
         self.audioQueue = nnAudioQueue
         
@@ -84,33 +113,26 @@ class PDAudioPlayer {
             guard let buffer = PDAudioBuffer(audioQueue:self.audioQueue, bufferSize:self.bufferByteSize, numberOfPacketDescriptions:self.mNumPacketsToRead) else {
                 return nil
             }
+            buffer.priming = true
             self.data.audioBuffers.append(buffer)
             self.data.source.fillBuffer(buffer);
             AudioQueueEnqueueBuffer(self.audioQueue, buffer.audioQueueBuffer, 0, nil)
         }
         AudioQueuePrime(self.audioQueue, 0, nil)
-        
-        /*
-        let gain :Float32 = 1.0;                                       // 1
-        // Optionally, allow user to override gain setting here
-        AudioQueueSetParameter (                                  // 2
-            self.audioQueue,                                        // 3
-            kAudioQueueParam_Volume,                              // 4
-            gain                                                  // 5
-        );
-        
-        do {
-            try AVAudioSession.sharedInstance().setPreferredSampleRate(source.mDataFormat.mSampleRate)
-        } catch {
-            print("Error")
+    }
+    
+    deinit {
+        let aq = self.audioQueue
+        _serialQueue.async {
+            _zombieAudioQueues.insert(aq)
+            _disposeAudioQueueIfNecessary(aq)
         }
-         */
     }
     
     public func play() {
         print("\(self) requestPlay")
-        self.dispatchQueue.async {
-            self.data.mIsRunning = true
+        _serialQueue.async {
+            self.data.playing = true
             AudioQueueStart(self.audioQueue, nil)
             print("\(self) play")
         }
@@ -118,7 +140,7 @@ class PDAudioPlayer {
     
     public func pause() {
         print("\(self) requestPause")
-        self.dispatchQueue.async {
+        _serialQueue.async {
             AudioQueuePause(self.audioQueue)
             print("\(self) pause")
         }
@@ -126,10 +148,11 @@ class PDAudioPlayer {
     
     public func stop() {
         print("\(self) requestStop")
-        self.data.mIsRunning = false
-        self.dispatchQueue.async {
+        self.data.playing = false
+        _serialQueue.async {
             print("\(self) stopping...")
-            AudioQueueReset(self.audioQueue)
+            AudioQueueStop(self.audioQueue, false)
+            //AudioQueueReset(self.audioQueue)
             print("\(self) stopped")
         }
     }
@@ -161,11 +184,5 @@ class PDAudioPlayer {
         return (outBufferSize, outNumPacketsToRead)
     }
 
-    deinit {
-        AudioQueueDispose(self.audioQueue, false)
-        print("\(self) deinitting")
-    }
 }
-
-
 

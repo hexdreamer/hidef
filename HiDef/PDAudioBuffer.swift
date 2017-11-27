@@ -23,6 +23,7 @@ import AudioToolbox
 class PDAudioBuffer {
 
     public let audioQueueBuffer :AudioQueueBufferRef
+    public var priming = false
     
     public var bufferCapacity :UInt32 {
         get {return self.audioQueueBuffer.pointee.mAudioDataBytesCapacity}

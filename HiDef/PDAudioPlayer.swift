@@ -12,7 +12,7 @@ import AVFoundation
 
 // We'd like all of this stuff to be static members of PDAudioPlayer, but you can't pass a static method to a C function pointer for AudioQueueAddPropertyListener
 private let _audioQueue:DispatchQueue = DispatchQueue(label:"AudioPlayer", qos:.default, attributes:[.concurrent], autoreleaseFrequency:.workItem, target:nil)
-private let _serialQueue:DispatchQueue = DispatchQueue(label:"AudioPlayer", qos:.default, attributes:[], autoreleaseFrequency:.workItem, target:nil)
+private let _serialQueue:DispatchQueue = DispatchQueue(label:"AudioPlayer_serial", qos:.default, attributes:[], autoreleaseFrequency:.workItem, target:nil)
 private var _zombieAudioQueues = Set<AudioQueueRef>()
 
 func MyAudioQueuePropertyListenerProc(_ inUserData:UnsafeMutableRawPointer?, _ inAQ:AudioQueueRef, _ inID:AudioQueuePropertyID) {
@@ -50,17 +50,12 @@ class PDAudioPlayer {
         }
     }
     
-    private let audioQueue :AudioQueueRef                                      // 3
+    private let audioQueue :AudioQueueRef
     private let data       :InternalData
     
-    static let kNumberBuffers :Int = 3                              // 1
-    //var mDataFormat:AudioStreamBasicDescription                     // 2
-    //var mBuffers :[AudioQueueBufferRef]                            // 4
-    //var mAudioFile :AudioFileID?                                    // 5
-    var bufferByteSize :UInt32                                     // 6
-    //var mCurrentPacket :Int64?                                      // 7
-    var mNumPacketsToRead :UInt32                                  // 8
-    //var mPacketDescs :UnsafePointer<AudioStreamPacketDescription>?  // 9
+    static let kNumberBuffers :Int = 3
+    var bufferByteSize :UInt32
+    var mNumPacketsToRead :UInt32
     
     var isPlaying:Bool {return data.playing}
     

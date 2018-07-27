@@ -17,8 +17,6 @@ class PDAudioSource {
     let channelLayoutSize:UInt32?
     var mCurrentPacket :Int64 = 0
 
-    let mPacketDescs :UnsafeMutablePointer<AudioStreamPacketDescription>?  // 9
-
     init(dataFormat:AudioStreamBasicDescription,
          channelLayout:UnsafeMutablePointer<AudioChannelLayout>?,
          channelLayoutSize:UInt32?,
@@ -30,7 +28,6 @@ class PDAudioSource {
         self.channelLayoutSize = channelLayoutSize
         self.cookie = cookie
         self.cookieSize = cookieSize
-        self.mPacketDescs = nil
     }
     
     func fillBuffer(_ buffer:PDAudioBuffer) {}

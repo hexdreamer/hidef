@@ -81,9 +81,11 @@ class PDFileAudioSource : PDAudioSource {
     
     static private func getPropertyTypedPointer<T>(_ propertyType:T.Type, _ propertyID:AudioFilePropertyID, _ fileID:AudioFileID) throws -> (UnsafeMutablePointer<T>?,UInt32?) {
         let (prop,size) = try getPropertyPointer(propertyID, fileID)
-        guard let nnprop = prop else {
+        guard let nnprop = prop,
+            let nnsize = size else {
             return (nil, nil)
         }
+        assert(MemoryLayout<T>.size == nnsize)
         let typedProp = nnprop.bindMemory(to:propertyType, capacity:1)
         return (typedProp,size)
     }

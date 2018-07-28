@@ -288,7 +288,7 @@ func main(_ argc:Int, _ argv:[String]) -> Int
         size = 0
         result = AudioFileGetPropertyInfo(myInfo.mAudioFile, kAudioFilePropertyChannelLayout, &size, nil);
         if result == noErr && size > 0 {
-            myInfo.mChannelLayout = UnsafeMutableRawPointer.allocate(bytes:Int(myInfo.mChannelLayoutSize), alignedTo:0).assumingMemoryBound(to: AudioChannelLayout.self)
+            myInfo.mChannelLayout = UnsafeMutableRawPointer.allocate(bytes:Int(myInfo.mChannelLayoutSize), alignedTo:0).bindMemory(to:AudioChannelLayout.self, capacity:1)
             XThrowIfError(AudioFileGetProperty(myInfo.mAudioFile!, kAudioFilePropertyChannelLayout, &size, myInfo.mChannelLayout!), "get audio file's channel layout")
             debugDescription(channelLayoutRef:myInfo.mChannelLayout!)
         }
@@ -325,7 +325,7 @@ func main(_ argc:Int, _ argv:[String]) -> Int
         }
         myInfo.mDataFormat = formatList[i].mASBD;
         myInfo.mChannelLayoutSize = UInt32(MemoryLayout<AudioChannelLayout>.size)
-        myInfo.mChannelLayout = UnsafeMutableRawPointer.allocate(bytes:Int(myInfo.mChannelLayoutSize), alignedTo:0).assumingMemoryBound(to: AudioChannelLayout.self)
+        myInfo.mChannelLayout = UnsafeMutableRawPointer.allocate(bytes:Int(myInfo.mChannelLayoutSize), alignedTo:0).bindMemory(to: AudioChannelLayout.self, capacity:1)
         myInfo.mChannelLayout?.pointee.mChannelLayoutTag = formatList[i].mChannelLayoutTag
         myInfo.mChannelLayout?.pointee.mChannelBitmap = []
         myInfo.mChannelLayout?.pointee.mNumberChannelDescriptions = 0

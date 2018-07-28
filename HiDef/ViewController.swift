@@ -80,14 +80,27 @@ class ViewController: UIViewController,
                 return
             } else {
                 if currentAudioPlayer.isPlaying {
-                    currentAudioPlayer.stop()
+                    currentAudioPlayer.pause()
                 }
             }
         }
         
-        guard let newAudioSource = PDFileAudioSource(url:url),
-              let newAudioPlayer = PDAudioPlayer(source:newAudioSource) else {
+        guard let newAudioSource = PDFileAudioSource(url:url) else {
+            let alert = UIAlertController(title:"Error", message:"Error reading audio file", preferredStyle:.alert)
+            alert.addAction(UIAlertAction(title:NSLocalizedString("Continue", comment:""), style:.default, handler:nil))
+            self.present(alert, animated:true, completion: nil)
             return
+        }
+        
+        guard let newAudioPlayer = PDAudioPlayer(source:newAudioSource) else {
+            let alert = UIAlertController(title:"Error", message:"Error initializing audio player", preferredStyle:.alert)
+            alert.addAction(UIAlertAction(title:NSLocalizedString("Continue", comment:""), style:.default, handler:nil))
+            self.present(alert, animated:true, completion: nil)
+            return
+        }
+        
+        if let currentAudioPlayer = self.audioPlayer {
+            currentAudioPlayer.stop()
         }
         self.audioSource = newAudioSource
         self.audioPlayer = newAudioPlayer

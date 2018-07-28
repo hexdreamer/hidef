@@ -34,13 +34,23 @@ class PDFileAudioSource : PDAudioSource {
         self.mAudioFile = audioFileID
         do {
             let (nDataFormat,_) = try PDFileAudioSource.getPropertyValue(AudioStreamBasicDescription.self, kAudioFilePropertyDataFormat, audioFileID)
-            let (channelLayout,channelLayoutSize) = try PDFileAudioSource.getPropertyTypedPointer(AudioChannelLayout.self, kAudioFilePropertyChannelLayout, audioFileID)
+            
+            // getting the channel layout may fail, but it's not crucial.
+            var channelLayout:UnsafeMutablePointer<AudioChannelLayout>? = nil
+            var channelLayoutSize:UInt32? = nil
+            do {
+                (channelLayout,channelLayoutSize) = try PDFileAudioSource.getPropertyTypedPointer(AudioChannelLayout.self, kAudioFilePropertyChannelLayout, audioFileID)
+            } catch {
+                print("Ignoring error getting channel layout for \(url.absoluteString): \(error.localizedDescription)")
+            }
+                        
             let (cookie,cookieSize) = try PDFileAudioSource.getPropertyPointer(kAudioFilePropertyMagicCookieData, audioFileID)
             guard let dataFormat = nDataFormat else {
                 return nil
             }
             super.init(dataFormat:dataFormat, channelLayout:channelLayout, channelLayoutSize:channelLayoutSize, cookie:cookie, cookieSize:cookieSize)
         } catch {
+            print("Error initializing PDFileAudioSource with \(url.absoluteString): \(error.localizedDescription)")
             return nil
         }
     }
@@ -69,20 +79,21 @@ class PDFileAudioSource : PDAudioSource {
         return (value,size)
     }
     
-    static private func getPropertyTypedPointer<T>(_ propertyType:T.Type, _ propertyID:AudioFilePropertyID, _ fileID:AudioFileID) throws -> (UnsafePointer<T>?,UInt32?) {
+    static private func getPropertyTypedPointer<T>(_ propertyType:T.Type, _ propertyID:AudioFilePropertyID, _ fileID:AudioFileID) throws -> (UnsafeMutablePointer<T>?,UInt32?) {
         let (prop,size) = try getPropertyPointer(propertyID, fileID)
         guard let nnprop = prop else {
             return (nil, nil)
         }
-        let typedProp = nnprop.assumingMemoryBound(to: propertyType)
+        let typedProp = nnprop.bindMemory(to:propertyType, capacity:1)
         return (typedProp,size)
     }
     
-    static private func getPropertyPointer(_ propertyID:AudioFilePropertyID, _ fileID:AudioFileID) throws -> (UnsafeRawPointer?,UInt32?) {
+    static private func getPropertyPointer(_ propertyID:AudioFilePropertyID, _ fileID:AudioFileID) throws -> (UnsafeMutableRawPointer?,UInt32?) {
         var status:OSStatus
         
-        var size = UInt32(MemoryLayout<UInt32>.size)
-        status = AudioFileGetPropertyInfo(fileID, propertyID, &size, nil)
+        var size:UInt32 = 0
+        var isWritable:UInt32 = 0
+        status = AudioFileGetPropertyInfo(fileID, propertyID, &size, &isWritable)
         if status != noErr {
             throw PDError.SomeError
         }
@@ -90,13 +101,13 @@ class PDFileAudioSource : PDAudioSource {
             return (nil,nil)
         }
         
-        let prop = UnsafeMutableRawPointer.allocate(bytes:Int(size), alignedTo:0)
+        let prop = UnsafeMutableRawPointer.allocate(byteCount:Int(size), alignment:0)
         status = AudioFileGetProperty(fileID, propertyID, &size, prop)
         if status != noErr {
             throw PDError.SomeError
         }
         
-        return (UnsafeRawPointer(prop),size)
+        return (prop,size)
     }
 
 }

@@ -126,18 +126,21 @@ class PDAudioPlayer {
     
     public func play() {
         print("\(self) requestPlay")
+        self.data.playing = true
         _serialQueue.async {
-            self.data.playing = true
+            print("\(self) starting play...")
             AudioQueueStart(self.audioQueue, nil)
-            print("\(self) play")
+            print("\(self) playing")
         }
     }
     
     public func pause() {
         print("\(self) requestPause")
+        self.data.playing = false
         _serialQueue.async {
+            print("\(self) pausing...")
             AudioQueuePause(self.audioQueue)
-            print("\(self) pause")
+            print("\(self) paused")
         }
     }
     
